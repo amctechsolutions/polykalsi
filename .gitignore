@@ -14,3 +14,4 @@ dryrun*.log
 *_key.txt
 *key_id.txt
 .env
+health_check.log

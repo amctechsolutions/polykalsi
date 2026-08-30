@@ -1,6 +1,5 @@
 // arb-obs PM2 app entry. Kept as a standalone file, NOT merged into
 // /root/rsibot/ecosystem.config.js, per the spec's zero-coupling requirement.
-// Task 2 (blocked) runs this with: pm2 start ecosystem.snippet.js
 module.exports = {
   apps: [
     {
@@ -12,6 +11,9 @@ module.exports = {
       autorestart: true,
       env: {
         PYTHONUNBUFFERED: "1",
+        KALSHI_API_KEY_ID: "10c3df74-cc88-4ed4-9e4a-bc3a8dafabdf",
+        KALSHI_PRIVATE_KEY_PATH: "/root/arb-secrets/kalshi_key.txt",
+        KALSHI_REST_BASE: "https://external-api.kalshi.com/trade-api/v2",
       },
     },
   ],
