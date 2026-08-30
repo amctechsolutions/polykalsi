@@ -55,6 +55,7 @@ ARB_ROOT = Path(__file__).resolve().parent
 KALSHI_WS_HOST = "wss://external-api-ws.kalshi.com/trade-api/ws/v2"
 KALSHI_WS_PATH = "/trade-api/ws/v2"
 POLY_WS_HOST = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+GAMMA_API_HOST = "https://gamma-api.polymarket.com"  # public, unauthenticated, no POLY* env involved
 
 RECONNECT_BASE_S = 2
 RECONNECT_CAP_S = 30
@@ -321,6 +322,36 @@ def parse_pm_price_change(change, fallback_size):
     return Decimal(best_ask), (fallback_size if fallback_size is not None else Decimal("0"))
 
 
+def parse_pm_market_metadata(payload):
+    """payload: the JSON list from GET /markets?condition_ids={id} on
+    gamma-api. Returns a compact dict of the per-market fee-related fields
+    Polymarket exposes, or {} if the market wasn't found.
+
+    NOT used to compute pm_fee — Task 1.5 (round 3, 2026-08-30) found these
+    fields do not differentiate by category (a Crypto market and a
+    Politics market both returned identical takerBaseFee/makerBaseFee), so
+    they cannot be trusted as the fee INPUT; pairs.yaml's operator-verified
+    pm_fee_rate (sourced from the venue's own UI) is the actual input to
+    polymarket_fee(). This is recorded purely for audit: if this raw
+    metadata ever starts actually differentiating by category, or drifts
+    from what pm_fee_rate asserts, that discrepancy is visible in every
+    ledger row instead of silently lost."""
+    if not payload:
+        return {}
+    m = payload[0]
+    return {"takerBaseFee": m.get("takerBaseFee"), "makerBaseFee": m.get("makerBaseFee")}
+
+
+def fetch_pm_market_metadata(condition_id):
+    """One-time GET at startup per enabled pair. Public, unauthenticated."""
+    import urllib.request
+
+    url = f"{GAMMA_API_HOST}/markets?condition_ids={condition_id}"
+    with urllib.request.urlopen(url, timeout=10) as resp:
+        payload = json.loads(resp.read().decode("utf-8"))
+    return parse_pm_market_metadata(payload)
+
+
 # --------------------------------------------------------------------------
 # Pure Kalshi orderbook_delta/orderbook_snapshot parsers. Confirmed live
 # under US-ARB-OBS-01 Task 1.5, 2026-08-30 (tests/fixtures/kalshi_*.json):
@@ -385,7 +416,8 @@ class PairState:
         self.pm_yes_ask_size = self.pm_no_ask_size = None
         self.pm_valid = False
         self.pm_last_update = None
-        self.pm_fee_rate = pair_cfg.get("pm_fee_rate")
+        self.pm_fee_rate = pair_cfg.get("pm_fee_rate")  # operator-verified, from the venue's own UI
+        self.pm_fee_metadata_raw = {}  # untrustworthy API metadata, recorded for audit only
 
 
 class Orchestrator:
@@ -398,6 +430,7 @@ class Orchestrator:
             if not p.get("enabled", False):
                 continue
             state = PairState(p)
+            state.pm_fee_metadata_raw = fetch_pm_market_metadata(p["polymarket_condition_id"])
             self.pair_states[p["pair_id"]] = state
             self.pairs_by_kalshi_ticker[p["kalshi_ticker"]] = p["pair_id"]
             self.pairs_by_pm_asset[p["polymarket_yes_token_id"]] = (p["pair_id"], "yes")
@@ -512,6 +545,8 @@ class Orchestrator:
                 "executable_top_size": exec_size,
                 "kalshi_fee_per_contract_c1": kfee, "pm_fee": pmfee,
                 "fee_model_version": FEE_MODEL_VERSION,
+                "pm_fee_rate_operator": state.pm_fee_rate,
+                "pm_fee_metadata_raw": state.pm_fee_metadata_raw,
                 "k_book_age_ms": k_age_ms, "pm_book_age_ms": pm_age_ms,
                 "book_fresh_flags": book_fresh_flags,
             }

@@ -17,6 +17,7 @@ from data_logger import (
     best_kalshi_level,
     parse_kalshi_snapshot_levels,
     parse_pm_book_snapshot,
+    parse_pm_market_metadata,
     parse_pm_price_change,
 )
 
@@ -158,3 +159,36 @@ def test_apply_kalshi_delta_against_live_snapshot_then_live_delta():
     assert best_yes is not None and best_no is not None
     yes_ask_from_no = Decimal("1") - best_no[0]
     assert Decimal("0") < yes_ask_from_no < Decimal("1")
+
+
+# --------------------------------------------------------------------------
+# Polymarket per-market fee metadata (Task 1.5, round 3, 2026-08-30):
+# confirms these API fields do NOT differentiate by category, which is why
+# pairs.yaml.pm_fee_rate must be UI-sourced, not API-sourced.
+# --------------------------------------------------------------------------
+
+def test_parse_pm_market_metadata_consumes_live_fixture():
+    payload = json.loads((FIXTURES / "polymarket_market_metadata_politics.json").read_text())
+    meta = parse_pm_market_metadata(payload)
+    assert "takerBaseFee" in meta
+    assert "makerBaseFee" in meta
+
+
+def test_parse_pm_market_metadata_empty_payload_returns_empty_dict():
+    assert parse_pm_market_metadata([]) == {}
+
+
+def test_pm_fee_metadata_does_not_differentiate_by_category():
+    """Regression guard locking in the round-3 finding: a Politics-category
+    market and a Crypto-category market (documented fee rates 0.04 vs 0.07
+    — nearly double) return IDENTICAL takerBaseFee/makerBaseFee. If this
+    ever starts differentiating, this test breaks loudly instead of the
+    finding quietly going stale — at which point pairs.yaml's UI-sourced
+    pm_fee_rate requirement should be revisited, not just this test."""
+    politics = parse_pm_market_metadata(
+        json.loads((FIXTURES / "polymarket_market_metadata_politics.json").read_text())
+    )
+    crypto = parse_pm_market_metadata(
+        json.loads((FIXTURES / "polymarket_market_metadata_crypto.json").read_text())
+    )
+    assert politics == crypto
