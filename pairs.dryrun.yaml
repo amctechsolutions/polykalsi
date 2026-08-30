@@ -1,0 +1,17 @@
+# SCRATCH config for the v3 pre-flight dry run only. NOT the real
+# pairs.yaml, not operator-approved config, deleted/ignored after the run.
+pairs:
+  - pair_id: "fed-sep2026-no-change"
+    enabled: true
+    kalshi_ticker: "KXFEDDECISION-26SEP-H0"
+    polymarket_condition_id: "0xa3b36b2d6104d34af4e6c6215fc818e43352e78a748fbfb0b85e3a35f71dec9a"
+    polymarket_yes_token_id: "5615282760875985231868508008056959876238536896643315063916840237042205273721"
+    polymarket_no_token_id: "97050921740416192996389806693742575608111328819185493163189880975611314813724"
+    pm_fee_rate: "0.04"
+  - pair_id: "govt-shutdown-oct1-2026"
+    enabled: true
+    kalshi_ticker: "KXGOVTSHUTDOWN-26OCT01"
+    polymarket_condition_id: "0x937a7f4210f01a06ed95228c255b5d141f93994c00c5508c6abbf1ce542282bd"
+    polymarket_yes_token_id: "8601474761739494662879132877571233419511374108958084174727177012285914530506"
+    polymarket_no_token_id: "27431848238380441159866176169932849060440136760407552489857058375069535196775"
+    pm_fee_rate: "0.04"

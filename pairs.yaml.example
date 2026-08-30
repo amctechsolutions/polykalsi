@@ -18,6 +18,11 @@
 # once at startup anyway and records it in every ledger row as
 # pm_fee_metadata_raw, purely so this rate (pm_fee_rate_operator in the
 # ledger) can be audited against it later if the API's behavior changes.
+#
+# MUST be a QUOTED STRING, e.g. "0.04", never a bare number. An unquoted
+# pm_fee_rate: 0.04 parses as a YAML float, which fails closed at startup
+# (caught live during the v3 pre-flight dry run, 2026-08-30) rather than
+# silently letting a float anywhere near the Decimal-only fee math.
 pairs:
   - pair_id: "example-pair-1"
     enabled: false
@@ -25,4 +30,4 @@ pairs:
     polymarket_condition_id: "REPLACE_WITH_REAL_CONDITION_ID"
     polymarket_yes_token_id: "REPLACE_WITH_REAL_YES_TOKEN_ID"
     polymarket_no_token_id: "REPLACE_WITH_REAL_NO_TOKEN_ID"
-    pm_fee_rate: null
+    pm_fee_rate: null  # or a quoted string like "0.04" once UI-confirmed

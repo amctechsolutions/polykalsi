@@ -15,6 +15,7 @@ from pathlib import Path
 from data_logger import (
     apply_kalshi_delta,
     best_kalshi_level,
+    best_kalshi_yes_ask,
     parse_kalshi_snapshot_levels,
     parse_pm_book_snapshot,
     parse_pm_market_metadata,
@@ -113,10 +114,10 @@ def test_parse_kalshi_snapshot_levels_consumes_live_fixture():
     assert yes_levels and no_levels
     assert all(isinstance(p, Decimal) and isinstance(s, Decimal) for p, s in yes_levels.items())
     best_yes = best_kalshi_level(yes_levels)
-    best_no = best_kalshi_level(no_levels)
-    assert best_yes is not None and best_no is not None
+    best_ask = best_kalshi_yes_ask(no_levels)
+    assert best_yes is not None and best_ask is not None
     assert Decimal("0") < best_yes[0] < Decimal("1")
-    assert Decimal("0") < best_no[0] < Decimal("1")
+    assert Decimal("0") < best_ask[0] < Decimal("1")
 
 
 def test_kalshi_delta_is_a_single_mutation_not_a_full_array():
@@ -155,10 +156,20 @@ def test_apply_kalshi_delta_against_live_snapshot_then_live_delta():
         assert price not in levels  # level removed when size drops to <= 0
 
     best_yes = best_kalshi_level(yes_levels)
-    best_no = best_kalshi_level(no_levels)
-    assert best_yes is not None and best_no is not None
-    yes_ask_from_no = Decimal("1") - best_no[0]
-    assert Decimal("0") < yes_ask_from_no < Decimal("1")
+    best_ask = best_kalshi_yes_ask(no_levels)
+    assert best_yes is not None and best_ask is not None
+    assert Decimal("0") < best_ask[0] < Decimal("1")
+
+
+def test_best_kalshi_yes_ask_uses_min_not_max_of_no_side():
+    """Regression guard for the v3 pre-flight dry-run bug (2026-08-30):
+    under use_yes_price=True, no_dollars_fp prices are already
+    yes-ask-equivalent, so the LOWEST price is the best ask. An earlier
+    implementation took max() and additionally subtracted from 1 — cross-
+    checked live against GET /markets/{ticker}/orderbook, a true yes_ask
+    of 0.52 came out as 0.01, a ~50x error."""
+    levels = {Decimal("0.52"): Decimal("100"), Decimal("0.90"): Decimal("50000")}
+    assert best_kalshi_yes_ask(levels) == (Decimal("0.52"), Decimal("100"))
 
 
 # --------------------------------------------------------------------------

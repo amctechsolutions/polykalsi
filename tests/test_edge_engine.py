@@ -119,3 +119,50 @@ def test_survival_stats_only_from_edge_closed(engine):
     rows = read_ledger(engine)
     reasons = [r["close_reason"] for r in rows]
     assert reasons == ["book_invalidated", "edge_closed"]
+
+
+def test_censored_flag_true_for_non_edge_closed_reasons(engine):
+    for reason_trigger in ("book_invalidated", "shutdown"):
+        engine.on_tick("p1", "dir_a", False, True, {}, Decimal("0.01"), True, 0, 0, {}, monotonic_now=100.0)
+        if reason_trigger == "book_invalidated":
+            engine.handle_book_invalidated("p1", "dir_a", monotonic_now=100.1)
+        else:
+            engine.handle_shutdown(monotonic_now=100.1)
+    rows = read_ledger(engine)
+    assert all(r["censored"] is True for r in rows)
+    assert all(r["close_reason"] != "edge_closed" for r in rows)
+
+
+def test_censored_flag_false_for_edge_closed(engine):
+    engine.on_tick("p1", "dir_a", False, True, {}, Decimal("0.01"), True, 0, 0, {}, monotonic_now=100.0)
+    engine.on_tick("p1", "dir_a", False, True, {}, Decimal("-0.02"), True, 0, 0, {}, monotonic_now=100.5)
+    rows = read_ledger(engine)
+    assert rows[0]["close_reason"] == "edge_closed"
+    assert rows[0]["censored"] is False
+
+
+def test_orphan_recovered_is_censored(tmp_path):
+    ledger_path = tmp_path / "ledger.jsonl"
+    state_path = tmp_path / "state.json"
+    engine1 = EdgeEngine(ledger_path, state_path)
+    engine1.on_tick("p1", "dir_a", False, True, {}, Decimal("0.01"), True, 0, 0, {}, monotonic_now=100.0)
+    engine2 = EdgeEngine(ledger_path, state_path)
+    engine2.reconcile_orphans(monotonic_now=5.0)
+    rows = read_ledger(engine2)
+    assert rows[0]["close_reason"] == "orphan_recovered"
+    assert rows[0]["censored"] is True
+
+
+def test_restart_count_stamped_on_every_row(tmp_path):
+    engine = EdgeEngine(tmp_path / "ledger.jsonl", tmp_path / "state.json", restart_count=3)
+    engine.on_tick("p1", "dir_a", False, True, {}, Decimal("0.01"), True, 0, 0, {}, monotonic_now=100.0)
+    engine.on_tick("p1", "dir_a", False, True, {}, Decimal("-0.02"), True, 0, 0, {}, monotonic_now=100.5)
+    rows = read_ledger(engine)
+    assert rows[0]["restart_count"] == 3
+
+
+def test_restart_count_defaults_to_zero(engine):
+    engine.on_tick("p1", "dir_a", False, True, {}, Decimal("0.01"), True, 0, 0, {}, monotonic_now=100.0)
+    engine.on_tick("p1", "dir_a", False, True, {}, Decimal("-0.02"), True, 0, 0, {}, monotonic_now=100.5)
+    rows = read_ledger(engine)
+    assert rows[0]["restart_count"] == 0

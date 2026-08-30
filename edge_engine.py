@@ -96,9 +96,10 @@ class PairExposure:
 
 
 class EdgeEngine:
-    def __init__(self, ledger_path, state_path):
+    def __init__(self, ledger_path, state_path, restart_count=0):
         self.ledger = LedgerWriter(ledger_path)
         self.state_path = Path(state_path)
+        self.restart_count = restart_count
         self.open_events: Dict[Key, OpenEvent] = {}
         self.exposure: Dict[str, PairExposure] = {}
         self._last_tick_monotonic: Dict[Key, float] = {}
@@ -220,6 +221,18 @@ class EdgeEngine:
             "survival_ms": survival_ms,
             "persisted_250ms": ev.persisted_250ms,
             "close_reason": close_reason,
+            # censored=True for any close_reason other than edge_closed: the
+            # episode's end was imposed externally (feed/process event), not
+            # the edge naturally closing, so survival_ms is a right-censored
+            # observation, not a clean sample — spec already says survival
+            # stats are edge_closed-only, this makes that filterable without
+            # requiring every downstream consumer to memorize which of the
+            # four other close_reasons count.
+            "censored": close_reason != "edge_closed",
+            # which process lifetime produced this row — lets an analysis
+            # correlate anomalous episodes with a specific restart/crash
+            # epoch instead of only seeing them in pm2's own restart count.
+            "restart_count": self.restart_count,
             "use_yes_price": ev.use_yes_price,
             **ev.quote,
         }

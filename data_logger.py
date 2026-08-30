@@ -343,11 +343,17 @@ def parse_pm_market_metadata(payload):
 
 
 def fetch_pm_market_metadata(condition_id):
-    """One-time GET at startup per enabled pair. Public, unauthenticated."""
+    """One-time GET at startup per enabled pair. Public, unauthenticated.
+
+    Explicit User-Agent required: gamma-api.polymarket.com 403s bare
+    urllib requests (default "Python-urllib/x.y" UA), confirmed live
+    during the v3 pre-flight dry run, 2026-08-30 — not an auth issue,
+    a bot-mitigation rule in front of the public endpoint."""
     import urllib.request
 
     url = f"{GAMMA_API_HOST}/markets?condition_ids={condition_id}"
-    with urllib.request.urlopen(url, timeout=10) as resp:
+    req = urllib.request.Request(url, headers={"User-Agent": "arb-obs/1.0 (+read-only observation instrument)"})
+    with urllib.request.urlopen(req, timeout=10) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
     return parse_pm_market_metadata(payload)
 
@@ -358,7 +364,7 @@ def fetch_pm_market_metadata(condition_id):
 #
 # orderbook_snapshot.msg = {market_ticker, market_id,
 #   yes_dollars_fp: [[price_str, size_str], ...],   # yes-side BID ladder
-#   no_dollars_fp:  [[price_str, size_str], ...]}   # no-side BID ladder
+#   no_dollars_fp:  [[price_str, size_str], ...]}   # SEE WARNING BELOW
 #
 # orderbook_delta.msg = {market_ticker, market_id,
 #   price_dollars, delta_fp, side ("yes"|"no"), ts, ts_ms}
@@ -373,9 +379,20 @@ def fetch_pm_market_metadata(condition_id):
 # (see PairState) built from parse_kalshi_snapshot_levels and mutated by
 # apply_kalshi_delta.
 #
-# Since Kalshi's orderbook has no separate ask ladder for a binary market,
-# a NO-side bid at price X is a synthetic YES ask at (1-X) — this mirrors
-# the no_proxy handling already used elsewhere for the reverse direction.
+# CRITICAL, caught by the v3 pre-flight dry run (2026-08-30) via a REST
+# /markets/{ticker}/orderbook cross-check: because this client subscribes
+# with use_yes_price=True, no_dollars_fp's price field is NOT the native
+# no-contract price — Kalshi has ALREADY transformed it to its
+# yes-price-equivalent (native_no_price -> 1 - native_no_price) before
+# sending. An earlier draft treated it as a native no-bid ladder and
+# additionally computed yes_ask = 1 - max(no_levels), a DOUBLE transform
+# that turned a true yes_ask of 0.52 into a computed 0.01 — a ~50x error
+# that would silently open a phantom "edge" on nearly every tick, with
+# every defense (seq continuity, book age) reporting perfectly healthy
+# the entire time. The correct read: no_dollars_fp's prices are already
+# yes-ask-equivalent, and the LOWEST price in that array is the best
+# (cheapest, most competitive) synthetic yes ask — no further arithmetic.
+# See best_kalshi_yes_ask() below; do not reintroduce a "1 - price" here.
 # --------------------------------------------------------------------------
 
 def parse_kalshi_snapshot_levels(levels_raw):
@@ -392,16 +409,51 @@ def apply_kalshi_delta(levels, price, delta):
 
 
 def best_kalshi_level(levels):
-    """Best (highest-price) resting bid level. Returns (price, size) or None."""
+    """Best (highest-price) resting BID level — correct for the yes-side
+    ladder (yes_dollars_fp), which use_yes_price does not transform.
+    Returns (price, size) or None."""
     if not levels:
         return None
     best_price = max(levels.keys())
     return best_price, levels[best_price]
 
 
+def best_kalshi_yes_ask(no_levels):
+    """no_dollars_fp under use_yes_price=True is already expressed in
+    yes-price-equivalent terms (see the module comment above this
+    section) — so the LOWEST price in this ladder is the best (cheapest)
+    synthetic yes ask. No "1 - price" transform: that was the bug.
+    Returns (price, size) or None."""
+    if not no_levels:
+        return None
+    best_price = min(no_levels.keys())
+    return best_price, no_levels[best_price]
+
+
 # --------------------------------------------------------------------------
 # Wiring: pairs.yaml -> per-pair quote state -> EdgeEngine ticks
 # --------------------------------------------------------------------------
+
+def parse_pm_fee_rate(pair_cfg):
+    """pairs.yaml's pm_fee_rate MUST be written as a quoted YAML string
+    (e.g. pm_fee_rate: "0.04"), never a bare number — YAML parses an
+    unquoted numeric literal as a Python float, which require_decimal()
+    correctly rejects at the first tick (caught live during the v3
+    pre-flight dry run, 2026-08-30), but only after the process is already
+    running. Fail closed at config-load time instead, with a message that
+    tells the operator exactly what to fix, rather than a stack trace
+    three hops downstream on the first live tick."""
+    raw = pair_cfg.get("pm_fee_rate")
+    if raw is None:
+        return None
+    if isinstance(raw, float):
+        raise StartupAbort(
+            f"pairs.yaml pm_fee_rate for pair_id={pair_cfg.get('pair_id')!r} is an unquoted "
+            f"YAML number ({raw!r}), which parses as a float. Quote it as a string, e.g. "
+            f'pm_fee_rate: "{raw}"'
+        )
+    return Decimal(raw)
+
 
 class PairState:
     def __init__(self, pair_cfg):
@@ -416,7 +468,7 @@ class PairState:
         self.pm_yes_ask_size = self.pm_no_ask_size = None
         self.pm_valid = False
         self.pm_last_update = None
-        self.pm_fee_rate = pair_cfg.get("pm_fee_rate")  # operator-verified, from the venue's own UI
+        self.pm_fee_rate = parse_pm_fee_rate(pair_cfg)  # operator-verified, from the venue's own UI
         self.pm_fee_metadata_raw = {}  # untrustworthy API metadata, recorded for audit only
 
 
@@ -452,13 +504,11 @@ class Orchestrator:
             apply_kalshi_delta(levels, price, delta)
 
         best_yes = best_kalshi_level(state.k_yes_levels)
-        best_no = best_kalshi_level(state.k_no_levels)
+        best_ask = best_kalshi_yes_ask(state.k_no_levels)
         if best_yes is not None:
             state.k_yes_bid, state.k_yes_bid_size = best_yes
-        if best_no is not None:
-            # best NO bid at price X implies a synthetic YES ask at (1 - X)
-            state.k_yes_ask = Decimal("1") - best_no[0]
-            state.k_yes_ask_size = best_no[1]
+        if best_ask is not None:
+            state.k_yes_ask, state.k_yes_ask_size = best_ask
         state.k_valid = True
         state.k_last_update = monotonic_now
         self._recompute(pair_id, monotonic_now)
@@ -575,6 +625,22 @@ def run_startup_checks(config):
     return pairs_cfg
 
 
+def bump_restart_count(path):
+    """Persisted across restarts, unlike anything in open_state.json (which
+    is cleared on every clean shutdown). Every ledger row is stamped with
+    the value this returns, so a specific episode can be correlated with
+    which process lifetime produced it — independent of, and a cross-check
+    against, pm2's own restart counter."""
+    path = Path(path)
+    try:
+        count = int(path.read_text().strip()) if path.exists() else 0
+    except (ValueError, OSError):
+        count = 0
+    count += 1
+    path.write_text(str(count))
+    return count
+
+
 async def periodic_checkpoint(edge_engine, start_monotonic, stop_event):
     while not stop_event.is_set():
         await asyncio.sleep(CHECKPOINT_INTERVAL_S)
@@ -589,7 +655,9 @@ async def periodic_checkpoint(edge_engine, start_monotonic, stop_event):
 async def async_main(config):
     pairs_cfg = run_startup_checks(config)
 
-    edge_engine = EdgeEngine(config["ledger_path"], config["state_path"])
+    restart_count = bump_restart_count(config["restart_count_path"])
+    log.info("restart_count=%d", restart_count)
+    edge_engine = EdgeEngine(config["ledger_path"], config["state_path"], restart_count=restart_count)
     start_monotonic = time.monotonic()
     orphans = edge_engine.reconcile_orphans(start_monotonic)
     if orphans:
@@ -636,11 +704,13 @@ def build_config():
     parser.add_argument("--pairs", default=str(ARB_ROOT / "pairs.yaml"))
     parser.add_argument("--ledger", default=str(ARB_ROOT / "edge_ledger.jsonl"))
     parser.add_argument("--state", default=str(ARB_ROOT / "open_state.json"))
+    parser.add_argument("--restart-count-path", default=str(ARB_ROOT / "restart_count.json"))
     args = parser.parse_args()
     return {
         "pairs_path": args.pairs,
         "ledger_path": args.ledger,
         "state_path": args.state,
+        "restart_count_path": args.restart_count_path,
         "kalshi_api_key_id": os.environ["KALSHI_API_KEY_ID"],
         "kalshi_private_key_path": os.environ["KALSHI_PRIVATE_KEY_PATH"],
         "kalshi_rest_base": os.environ["KALSHI_REST_BASE"],

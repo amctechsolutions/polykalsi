@@ -69,6 +69,19 @@ def test_scan_for_stray_secrets_flags_wallet_pattern(tmp_path):
         scan_for_stray_secrets(tmp_path, declared_kalshi_key_path=None)
 
 
+def test_scan_for_stray_secrets_allows_polymarket_condition_id(tmp_path):
+    """Regression guard for the v3 pre-flight dry-run bug (2026-08-30): a
+    real pairs.yaml legitimately contains 0x-prefixed 64-char condition IDs
+    (keccak256 hashes), which must NOT be flagged as a wallet address (40
+    hex chars) just because they happen to contain 40+ consecutive hex
+    digits. Without the \\b boundary this raised on every real pairs.yaml."""
+    (tmp_path / "pairs.yaml").write_text(
+        "pairs:\n  - polymarket_condition_id: "
+        "\"0xa3b36b2d6104d34af4e6c6215fc818e43352e78a748fbfb0b85e3a35f71dec9a\"\n"
+    )
+    scan_for_stray_secrets(tmp_path, declared_kalshi_key_path=None)  # must not raise
+
+
 def test_load_and_validate_pairs_rejects_missing_file(tmp_path):
     with pytest.raises(StartupAbort):
         load_and_validate_pairs(tmp_path / "does_not_exist.yaml")

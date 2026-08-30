@@ -37,10 +37,19 @@ def assert_kalshi_key_read_only(scopes):
 
 _PEM_PATTERN = re.compile(rb"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 _WALLET_PATTERNS = [
-    re.compile(rb"0x[a-fA-F0-9]{40}"),
+    # \b after the 40 hex chars bounds this to an EXACT Ethereum-address
+    # length (0x + 40 hex = 42 chars). Without the boundary this also
+    # matched Polymarket's condition IDs, which are legitimate 0x-prefixed
+    # 64-char keccak256 hashes (0x + 64 hex) that pairs.yaml is expected to
+    # contain — an unbounded match would fail-closed on every real
+    # pairs.yaml, caught by the v3 pre-flight dry run, 2026-08-30.
+    re.compile(rb"0x[a-fA-F0-9]{40}\b"),
     re.compile(rb"\bxprv[a-zA-Z0-9]{50,}\b"),
     re.compile(rb"\bmnemonic\b", re.IGNORECASE),
 ]
+
+
+_SCAN_EXCLUDED_DIR_NAMES = {"arb_env", "tests", ".git", "__pycache__", ".pytest_cache"}
 
 
 def scan_for_stray_secrets(root, declared_kalshi_key_path):
@@ -48,7 +57,14 @@ def scan_for_stray_secrets(root, declared_kalshi_key_path):
     wallet-like patterns, EXCLUDING the one declared Kalshi key path. This is
     a content scan, not an any-file check, per spec: a file that happens to
     be named "key.pem" but contains no such pattern is not flagged, and a
-    file with an innocuous name that DOES contain a PEM block is."""
+    file with an innocuous name that DOES contain a PEM block is.
+
+    tests/ is also excluded: its fixtures deliberately contain fake
+    PEM-shaped strings to test this exact detector (see
+    tests/test_startup_checks.py), which is not operator content and
+    caught this scan raising on itself during the v3 pre-flight dry run,
+    2026-08-30 — same exclusion set as tests/test_static_scan.py uses for
+    the same reason."""
     root = Path(root)
     declared = declared_kalshi_key_path.resolve() if declared_kalshi_key_path else None
     for path in root.rglob("*"):
@@ -56,8 +72,8 @@ def scan_for_stray_secrets(root, declared_kalshi_key_path):
             continue
         if declared is not None and path.resolve() == declared:
             continue
-        if "arb_env" in path.parts:
-            continue  # venv site-packages are not operator content
+        if any(part in _SCAN_EXCLUDED_DIR_NAMES for part in path.relative_to(root).parts):
+            continue
         try:
             content = path.read_bytes()
         except OSError:

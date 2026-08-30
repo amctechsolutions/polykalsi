@@ -5,6 +5,11 @@ __pycache__/
 pairs.yaml
 edge_ledger.jsonl
 open_state.json
+restart_count.json
+scratch_ledger.jsonl
+scratch_state.json
+scratch_restart_count.json
+dryrun*.log
 *.pem
 *_key.txt
 *key_id.txt
