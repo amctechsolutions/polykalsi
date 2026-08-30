@@ -94,12 +94,23 @@ def kalshi_auth_headers(private_key, api_key_id, method, path):
 
 def fetch_kalshi_key_scopes(rest_base, private_key, api_key_id):
     """One-time GET at startup only, to satisfy the fail-closed read-only-key
-    assertion. Uses stdlib urllib, not a new dependency."""
+    assertion. Uses stdlib urllib, not a new dependency.
+
+    rest_base is documented/configured as the FULL versioned base
+    (https://external-api.kalshi.com/trade-api/v2) — path below is the
+    domain-root-relative path Kalshi's signature scheme requires. Building
+    the request URL as rest_base + path double-counts "/trade-api/v2" (a
+    real bug caught live under Task 1.5's Kalshi capture, 2026-08-30: it
+    404'd against the real API). Fixed by deriving scheme+host from
+    rest_base and joining with `path` directly instead of string-concat."""
     import urllib.request
+    from urllib.parse import urlsplit, urlunsplit
 
     path = "/trade-api/v2/api_keys"
     headers = kalshi_auth_headers(private_key, api_key_id, "GET", path)
-    req = urllib.request.Request(rest_base.rstrip("/") + path, headers=headers, method="GET")
+    origin = urlsplit(rest_base)
+    url = urlunsplit((origin.scheme, origin.netloc, path, "", ""))
+    req = urllib.request.Request(url, headers=headers, method="GET")
     with urllib.request.urlopen(req, timeout=10) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
     candidates = payload.get("api_keys", payload if isinstance(payload, list) else [])
@@ -311,6 +322,53 @@ def parse_pm_price_change(change, fallback_size):
 
 
 # --------------------------------------------------------------------------
+# Pure Kalshi orderbook_delta/orderbook_snapshot parsers. Confirmed live
+# under US-ARB-OBS-01 Task 1.5, 2026-08-30 (tests/fixtures/kalshi_*.json):
+#
+# orderbook_snapshot.msg = {market_ticker, market_id,
+#   yes_dollars_fp: [[price_str, size_str], ...],   # yes-side BID ladder
+#   no_dollars_fp:  [[price_str, size_str], ...]}   # no-side BID ladder
+#
+# orderbook_delta.msg = {market_ticker, market_id,
+#   price_dollars, delta_fp, side ("yes"|"no"), ts, ts_ms}
+#
+# An earlier draft assumed body["yes"]/body["no"] (wrong field names) AND
+# that every message carried a full level array (wrong — orderbook_delta
+# is a single incremental mutation against PERSISTENT per-market book
+# state that must be maintained here; without it, deltas would silently
+# no-op forever after the first snapshot, freezing the recorded Kalshi
+# price at whatever it was at startup). Both bugs are fixed by keeping
+# state.k_yes_levels/k_no_levels as live dict[Decimal, Decimal] books
+# (see PairState) built from parse_kalshi_snapshot_levels and mutated by
+# apply_kalshi_delta.
+#
+# Since Kalshi's orderbook has no separate ask ladder for a binary market,
+# a NO-side bid at price X is a synthetic YES ask at (1-X) — this mirrors
+# the no_proxy handling already used elsewhere for the reverse direction.
+# --------------------------------------------------------------------------
+
+def parse_kalshi_snapshot_levels(levels_raw):
+    return {Decimal(price): Decimal(size) for price, size in levels_raw}
+
+
+def apply_kalshi_delta(levels, price, delta):
+    """Mutates `levels` (dict[Decimal, Decimal]) in place."""
+    new_size = levels.get(price, Decimal("0")) + delta
+    if new_size <= 0:
+        levels.pop(price, None)
+    else:
+        levels[price] = new_size
+
+
+def best_kalshi_level(levels):
+    """Best (highest-price) resting bid level. Returns (price, size) or None."""
+    if not levels:
+        return None
+    best_price = max(levels.keys())
+    return best_price, levels[best_price]
+
+
+# --------------------------------------------------------------------------
 # Wiring: pairs.yaml -> per-pair quote state -> EdgeEngine ticks
 # --------------------------------------------------------------------------
 
@@ -319,6 +377,8 @@ class PairState:
         self.cfg = pair_cfg
         self.k_yes_bid = self.k_yes_ask = None
         self.k_yes_bid_size = self.k_yes_ask_size = None
+        self.k_yes_levels = {}  # Decimal(price) -> Decimal(size), yes-side bid ladder
+        self.k_no_levels = {}   # Decimal(price) -> Decimal(size), no-side bid ladder
         self.k_valid = False
         self.k_last_update = None
         self.pm_yes_ask = self.pm_no_ask = None
@@ -348,14 +408,22 @@ class Orchestrator:
         if pair_id is None:
             return
         state = self.pair_states[pair_id]
-        yes_levels = body.get("yes", [])
-        no_levels = body.get("no", [])
-        if yes_levels:
-            best_bid = max(yes_levels, key=lambda lvl: lvl[0])
-            state.k_yes_bid, state.k_yes_bid_size = best_bid[0], best_bid[1]
-        if no_levels:
-            best_no = max(no_levels, key=lambda lvl: lvl[0])
-            # best NO bid at price X implies a YES ask at (1 - X)
+        if is_snapshot:
+            state.k_yes_levels = parse_kalshi_snapshot_levels(body.get("yes_dollars_fp", []))
+            state.k_no_levels = parse_kalshi_snapshot_levels(body.get("no_dollars_fp", []))
+        else:
+            side = body.get("side")
+            price = Decimal(body["price_dollars"])
+            delta = Decimal(body["delta_fp"])
+            levels = state.k_yes_levels if side == "yes" else state.k_no_levels
+            apply_kalshi_delta(levels, price, delta)
+
+        best_yes = best_kalshi_level(state.k_yes_levels)
+        best_no = best_kalshi_level(state.k_no_levels)
+        if best_yes is not None:
+            state.k_yes_bid, state.k_yes_bid_size = best_yes
+        if best_no is not None:
+            # best NO bid at price X implies a synthetic YES ask at (1 - X)
             state.k_yes_ask = Decimal("1") - best_no[0]
             state.k_yes_ask_size = best_no[1]
         state.k_valid = True
@@ -368,6 +436,8 @@ class Orchestrator:
             return
         state = self.pair_states[pair_id]
         state.k_valid = False
+        state.k_yes_levels = {}
+        state.k_no_levels = {}
         self.edge_engine.handle_book_invalidated(pair_id, "kalshi_yes_pm_no", monotonic_now)
         self.edge_engine.handle_book_invalidated(pair_id, "kalshi_no_proxy_pm_yes", monotonic_now)
 

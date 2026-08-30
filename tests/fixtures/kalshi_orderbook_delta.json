@@ -1,0 +1,14 @@
+{
+  "type": "orderbook_delta",
+  "sid": 1,
+  "seq": 2,
+  "msg": {
+    "market_ticker": "KXEPLGAME-26AUG30MUNIPS-MUN",
+    "market_id": "ed4b69cb-69c4-49b2-be65-9ab6b3351357",
+    "price_dollars": "0.7200",
+    "delta_fp": "-6674.00",
+    "side": "no",
+    "ts": "2026-08-30T05:31:52.107014Z",
+    "ts_ms": 1788067912107
+  }
+}

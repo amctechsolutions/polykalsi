@@ -5,3 +5,7 @@ __pycache__/
 pairs.yaml
 edge_ledger.jsonl
 open_state.json
+*.pem
+*_key.txt
+*key_id.txt
+.env
