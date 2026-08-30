@@ -1,0 +1,18 @@
+# pairs.yaml — operator-managed. Copy to pairs.yaml and fill in real IDs.
+# arb-obs will fail closed at startup if pairs.yaml is missing, empty, or
+# unparseable. No ticker or token ID is ever sourced from model memory —
+# look each one up directly on kalshi.com / polymarket.com before adding it.
+#
+# pm_fee_rate/pm_fee_exponent should be read off the live
+# GET /clob-markets/{condition_id} response for this specific market
+# (see arb_common.polymarket_fee — the exact formula is a placeholder
+# pending confirmation, do not trust pm_fee numbers blindly yet).
+pairs:
+  - pair_id: "example-pair-1"
+    enabled: false
+    kalshi_ticker: "REPLACE_WITH_REAL_KALSHI_TICKER"
+    polymarket_condition_id: "REPLACE_WITH_REAL_CONDITION_ID"
+    polymarket_yes_token_id: "REPLACE_WITH_REAL_YES_TOKEN_ID"
+    polymarket_no_token_id: "REPLACE_WITH_REAL_NO_TOKEN_ID"
+    pm_fee_rate: null
+    pm_fee_exponent: 2
