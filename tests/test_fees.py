@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from arb_common import kalshi_fee, kalshi_fee_per_contract_c1, net_edge
+from arb_common import kalshi_fee, kalshi_fee_per_contract_c1, net_edge, polymarket_fee
 
 
 def test_kalshi_fee_per_contract_064():
@@ -35,3 +35,23 @@ def test_net_edge_basic():
 def test_net_edge_requires_decimal():
     with pytest.raises(TypeError):
         net_edge(0.40, Decimal("0.55"), Decimal("0.02"), Decimal("0.01"))
+
+
+# Worked examples verbatim from docs.polymarket.com/trading/fees (Crypto
+# feeRate=0.07), confirmed live under Task 1.5, 2026-08-30.
+
+def test_polymarket_fee_worked_example_050():
+    assert polymarket_fee(Decimal("100"), Decimal("0.50"), Decimal("0.07")) == Decimal("1.75000")
+
+
+def test_polymarket_fee_worked_example_030():
+    assert polymarket_fee(Decimal("100"), Decimal("0.30"), Decimal("0.07")) == Decimal("1.47000")
+
+
+def test_polymarket_fee_worked_example_070_symmetric():
+    # docs explicitly note a trade at 30c incurs the same dollar fee as 70c
+    assert polymarket_fee(Decimal("100"), Decimal("0.70"), Decimal("0.07")) == Decimal("1.47000")
+
+
+def test_polymarket_fee_geopolitics_is_zero():
+    assert polymarket_fee(Decimal("100"), Decimal("0.50"), Decimal("0")) == Decimal("0.00000")

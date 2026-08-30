@@ -5,11 +5,12 @@ from both venues must be decoded with `loads_decimal` (parse_float=Decimal)
 so a stray float can never even be constructed from wire data.
 """
 import json
-from decimal import Decimal, ROUND_CEILING
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 
 CENT = Decimal("0.01")
+FIVE_DP = Decimal("0.00001")
 KALSHI_FEE_RATE = Decimal("0.07")
-FEE_MODEL_VERSION = "pm-fee-v1-rate-exponent"
+FEE_MODEL_VERSION = "pm-fee-v2-docs-2026-08-30"
 
 
 def require_decimal(value, name="value"):
@@ -46,19 +47,21 @@ def kalshi_fee_per_contract_c1(price):
     return kalshi_fee(Decimal("1"), price)
 
 
-def polymarket_fee(contracts, price, rate, exponent):
-    """Placeholder formula pending confirmation against a live
-    GET /clob-markets/{condition_id} response (Task 0 only verified the
-    rate/exponent/takerOnly/rebateRate FIELDS exist, not Polymarket's exact
-    fee formula). Mirrors the Kalshi quadratic-against-extremes shape so it
-    is at least directionally sane; fee_model_version is recorded on every
-    ledger row precisely so this can be revised without corrupting history."""
+def polymarket_fee(contracts, price, fee_rate):
+    """fee = C * feeRate * p * (1-p), per docs.polymarket.com/trading/fees
+    (verified live under US-ARB-OBS-01 Task 1.5, 2026-08-30). No exponent
+    term — an earlier Task-0 research summary claimed the CLOB market
+    metadata exposes a rate/exponent/takerOnly/rebateRate shape; the fees
+    page itself names neither "exponent" nor "takerOnly", so that summary
+    was wrong and this formula supersedes it. Polymarket rounds fees to 5
+    decimal places (not cent-ceiling like Kalshi); the exact rounding MODE
+    isn't specified beyond "rounded", so ROUND_HALF_UP is a best-effort
+    choice pending a live example that pins it down more precisely."""
     require_decimal(contracts, "contracts")
     require_decimal(price, "price")
-    require_decimal(rate, "rate")
-    base = price * (Decimal("1") - price)
-    raw = rate * (base ** exponent) * contracts
-    return ceil_to_cent(raw)
+    require_decimal(fee_rate, "fee_rate")
+    raw = fee_rate * price * (Decimal("1") - price) * contracts
+    return raw.quantize(FIVE_DP, rounding=ROUND_HALF_UP)
 
 
 def net_edge(leg_a_ask, leg_b_ask, kalshi_fee_amount, pm_fee):

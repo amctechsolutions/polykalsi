@@ -11,11 +11,13 @@ Hosts below are sourced from live docs fetched under US-ARB-OBS-01 Task 0
   - Kalshi auth: docs.kalshi.com/getting_started/quick_start_authenticated_requests
   - Polymarket WS: docs.polymarket.com/api-reference/wss/market
 
-KALSHI_REST_BASE has NO hardcoded default: Task 0 verified the WS host and
-the auth header/signature scheme, but did not verify the exact REST base
-domain used for GET /trade-api/v2/api_keys. Per spec ("no endpoint from
-model memory"), this must be supplied via config/env after being read
-directly off docs.kalshi.com, not guessed here.
+KALSHI_REST_BASE has NO hardcoded default, by deliberate choice, not gap:
+Task 1.5 (2026-08-30) confirmed it live as
+https://external-api.kalshi.com/trade-api/v2 (demo:
+https://external-api.demo.kalshi.co/trade-api/v2), per
+docs.kalshi.com/getting_started/quick_start_authenticated_requests. It
+stays operator-supplied via env var rather than hardcoded here so a
+demo/prod mixup is a config-time decision, not a silent code default.
 """
 import argparse
 import asyncio
@@ -252,6 +254,13 @@ class PolymarketClient:
             await ws.send("PING")
 
     def _handle_message(self, raw):
+        """`book` events carry a top-level asset_id + full bids/asks arrays
+        (snapshot). `price_change` events do NOT: they carry a top-level
+        `price_changes` array bundling deltas for multiple asset_ids at
+        once, each entry giving best_bid/best_ask directly (no size at that
+        level) — confirmed by live capture under US-ARB-OBS-01 Task 1.5,
+        2026-08-30; see tests/fixtures/polymarket_price_change.json. An
+        earlier draft of this client wrongly assumed both shapes matched."""
         if raw == "PONG":
             return
         try:
@@ -262,13 +271,43 @@ class PolymarketClient:
         events = msg if isinstance(msg, list) else [msg]
         for event in events:
             event_type = event.get("event_type")
-            asset_id = event.get("asset_id")
-            if asset_id is None:
-                continue
             if event_type == "book":
-                self.on_book_update(asset_id, event, is_snapshot=True)
+                asset_id = event.get("asset_id")
+                if asset_id is not None:
+                    self.on_book_update(asset_id, event, is_snapshot=True)
             elif event_type == "price_change":
-                self.on_book_update(asset_id, event, is_snapshot=False)
+                for change in event.get("price_changes", []):
+                    asset_id = change.get("asset_id")
+                    if asset_id is not None:
+                        self.on_book_update(asset_id, change, is_snapshot=False)
+
+
+# --------------------------------------------------------------------------
+# Pure Polymarket message parsers (no I/O, no state) — kept standalone so
+# tests/test_static_scan-adjacent live-fixture tests can call them directly
+# against a captured raw message without spinning up the Orchestrator.
+# --------------------------------------------------------------------------
+
+def parse_pm_book_snapshot(event):
+    """`book` event: top-level asks=[{price,size},...]. Returns (price,
+    size) of the best (lowest) ask as Decimals, or None if no asks."""
+    asks = event.get("asks", [])
+    if not asks:
+        return None
+    best = min(asks, key=lambda lvl: Decimal(lvl["price"]))
+    return Decimal(best["price"]), Decimal(best["size"])
+
+
+def parse_pm_price_change(change, fallback_size):
+    """One entry of a `price_change` event's `price_changes` array: gives
+    best_ask directly, but NOT its size. size is carried forward from the
+    last snapshot/delta until the next `book` re-snapshot (Polymarket
+    re-sends one after every trade per docs) resyncs it — a known,
+    documented approximation, not silently assumed correct."""
+    best_ask = change.get("best_ask")
+    if best_ask is None:
+        return None
+    return Decimal(best_ask), (fallback_size if fallback_size is not None else Decimal("0"))
 
 
 # --------------------------------------------------------------------------
@@ -287,7 +326,6 @@ class PairState:
         self.pm_valid = False
         self.pm_last_update = None
         self.pm_fee_rate = pair_cfg.get("pm_fee_rate")
-        self.pm_fee_exponent = pair_cfg.get("pm_fee_exponent", 2)
 
 
 class Orchestrator:
@@ -339,10 +377,13 @@ class Orchestrator:
             return
         pair_id, side = entry
         state = self.pair_states[pair_id]
-        asks = event.get("asks", [])
-        if asks:
-            best = min(asks, key=lambda lvl: Decimal(lvl["price"]))
-            price, size = Decimal(best["price"]), Decimal(best["size"])
+        if is_snapshot:
+            result = parse_pm_book_snapshot(event)
+        else:
+            existing_size = state.pm_yes_ask_size if side == "yes" else state.pm_no_ask_size
+            result = parse_pm_price_change(event, fallback_size=existing_size)
+        if result is not None:
+            price, size = result
             if side == "yes":
                 state.pm_yes_ask, state.pm_yes_ask_size = price, size
             else:
@@ -387,7 +428,7 @@ class Orchestrator:
 
             kfee = kalshi_fee_per_contract_c1(kalshi_price)
             pmfee = (
-                polymarket_fee(Decimal("1"), leg_b_ask, state.pm_fee_rate, state.pm_fee_exponent)
+                polymarket_fee(Decimal("1"), leg_b_ask, state.pm_fee_rate)
                 if state.pm_fee_rate is not None
                 else Decimal("0")
             )

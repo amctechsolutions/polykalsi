@@ -36,7 +36,7 @@ def test_kalshi_fee_rejects_float_price():
 
 def test_polymarket_fee_rejects_float_rate():
     with pytest.raises(TypeError):
-        polymarket_fee(Decimal("1"), Decimal("0.5"), 0.04, 2)
+        polymarket_fee(Decimal("1"), Decimal("0.5"), 0.04)
 
 
 def test_loads_decimal_never_produces_float():
