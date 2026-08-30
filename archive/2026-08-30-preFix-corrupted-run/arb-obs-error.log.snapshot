@@ -1,0 +1,118 @@
+2026-08-30 15:40:16,570 INFO arb-obs: restart_count=1
+2026-08-30 15:40:38,985 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 2 got 3
+2026-08-30 15:44:28,798 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 3 got 20
+2026-08-30 15:44:58,038 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 20 got 21
+2026-08-30 15:45:16,973 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 579974.3096604943, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 454688.7911260128, "qualifying_edge_ms": 0}}
+2026-08-30 15:47:27,037 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 27 got 29
+2026-08-30 15:48:03,514 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 29 got 32
+2026-08-30 15:48:37,946 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 32 got 52
+2026-08-30 15:48:38,003 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 52 got 53
+2026-08-30 15:48:43,144 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 55 got 56
+2026-08-30 15:49:43,206 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 56 got 96
+2026-08-30 15:49:43,329 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 96 got 97
+2026-08-30 15:49:56,272 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 107 got 109
+2026-08-30 15:50:05,388 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 109 got 117
+2026-08-30 15:50:07,731 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 117 got 118
+2026-08-30 15:50:16,975 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 1129482.0232652128, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 1129103.3795252442, "qualifying_edge_ms": 0}}
+2026-08-30 15:51:25,673 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 166 got 167
+2026-08-30 15:51:47,433 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 167 got 183
+2026-08-30 15:51:50,539 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 183 got 184
+2026-08-30 15:55:16,977 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 1379073.42915982, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 1729367.7328899503, "qualifying_edge_ms": 0}}
+2026-08-30 15:55:45,988 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 236 got 238
+2026-08-30 15:55:52,683 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 238 got 239
+2026-08-30 15:56:55,879 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 242 got 244
+2026-08-30 15:57:36,761 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 244 got 245
+2026-08-30 15:58:03,624 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 247 got 248
+2026-08-30 15:58:27,897 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 248 got 251
+2026-08-30 16:00:16,978 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 1833470.529910177, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 2295381.55143708, "qualifying_edge_ms": 0}}
+2026-08-30 16:02:23,933 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 251 got 264
+2026-08-30 16:03:16,231 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 264 got 271
+2026-08-30 16:05:16,979 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 2392860.3795729578, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 2886856.4608097076, "qualifying_edge_ms": 0}}
+2026-08-30 16:08:07,972 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 271 got 284
+2026-08-30 16:08:35,642 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 284 got 287
+2026-08-30 16:09:24,890 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 287 got 295
+2026-08-30 16:09:29,110 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 295 got 296
+2026-08-30 16:09:32,350 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 300 got 302
+2026-08-30 16:09:35,846 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 302 got 304
+2026-08-30 16:10:05,595 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 304 got 312
+2026-08-30 16:10:08,868 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 312 got 316
+2026-08-30 16:10:16,981 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 2988874.7198693454, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 3501678.8246668875, "qualifying_edge_ms": 0}}
+2026-08-30 16:10:55,224 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 316 got 318
+2026-08-30 16:11:04,556 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 318 got 332
+2026-08-30 16:11:04,743 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 332 got 334
+2026-08-30 16:12:51,988 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 334 got 376
+2026-08-30 16:13:54,003 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 376 got 381
+2026-08-30 16:15:16,985 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 3512611.149407923, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 4094382.086902857, "qualifying_edge_ms": 0}}
+2026-08-30 16:15:18,680 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 381 got 389
+2026-08-30 16:15:28,660 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 389 got 391
+2026-08-30 16:17:36,892 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 391 got 427
+2026-08-30 16:17:47,308 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 427 got 429
+2026-08-30 16:20:11,154 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 429 got 482
+2026-08-30 16:20:11,709 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 482 got 483
+2026-08-30 16:20:16,986 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 4108809.493511915, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 4680331.300884485, "qualifying_edge_ms": 0}}
+2026-08-30 16:21:22,093 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 485 got 491
+2026-08-30 16:22:27,208 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 491 got 497
+2026-08-30 16:22:52,037 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 497 got 503
+2026-08-30 16:23:58,581 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 503 got 507
+2026-08-30 16:24:10,890 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 507 got 508
+2026-08-30 16:25:16,992 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 4712456.243280321, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 5119988.583158702, "qualifying_edge_ms": 0}}
+2026-08-30 16:27:51,775 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 522 got 526
+2026-08-30 16:28:27,036 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 526 got 537
+2026-08-30 16:28:39,379 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 537 got 539
+2026-08-30 16:30:16,996 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 5279616.528950632, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 5482125.741962343, "qualifying_edge_ms": 0}}
+2026-08-30 16:30:50,141 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 539 got 547
+2026-08-30 16:30:50,298 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 547 got 548
+2026-08-30 16:33:59,949 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 571 got 575
+2026-08-30 16:35:17,002 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 5880472.653258592, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 5933565.579365939, "qualifying_edge_ms": 0}}
+2026-08-30 16:36:50,506 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 575 got 602
+2026-08-30 16:37:04,359 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 602 got 606
+2026-08-30 16:40:17,009 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 6419950.869265944, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 6531046.473786235, "qualifying_edge_ms": 0}}
+2026-08-30 16:41:38,241 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 606 got 624
+2026-08-30 16:42:46,126 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 624 got 628
+2026-08-30 16:45:17,011 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 6916996.740795672, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 7133003.558456898, "qualifying_edge_ms": 0}}
+2026-08-30 16:46:27,529 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 628 got 644
+2026-08-30 16:46:31,966 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 644 got 646
+2026-08-30 16:46:33,322 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 646 got 651
+2026-08-30 16:48:06,247 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 651 got 662
+2026-08-30 16:48:08,247 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 662 got 663
+2026-08-30 16:50:17,013 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 7278214.416068047, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 7723415.418304503, "qualifying_edge_ms": 0}}
+2026-08-30 16:51:14,617 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 672 got 678
+2026-08-30 16:52:45,258 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 678 got 682
+2026-08-30 16:55:17,014 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 7879628.3507831395, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 8332587.257210165, "qualifying_edge_ms": 0}}
+2026-08-30 16:55:58,475 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 682 got 756
+2026-08-30 16:56:01,789 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 756 got 758
+2026-08-30 16:57:27,793 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 758 got 808
+2026-08-30 16:57:34,057 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 808 got 812
+2026-08-30 16:57:47,540 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 812 got 816
+2026-08-30 16:57:54,846 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 816 got 817
+2026-08-30 16:59:11,279 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 821 got 823
+2026-08-30 17:00:17,016 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 8461937.837671489, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 8823588.876128197, "qualifying_edge_ms": 0}}
+2026-08-30 17:00:48,451 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 823 got 827
+2026-08-30 17:01:01,660 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 827 got 834
+2026-08-30 17:05:17,019 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 9021880.985882133, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 9421294.53966394, "qualifying_edge_ms": 0}}
+2026-08-30 17:05:31,740 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 834 got 881
+2026-08-30 17:06:57,035 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 881 got 885
+2026-08-30 17:06:59,552 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 885 got 887
+2026-08-30 17:07:48,859 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 887 got 888
+2026-08-30 17:09:17,971 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 891 got 894
+2026-08-30 17:10:17,024 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 9623989.841651171, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 9857471.232574433, "qualifying_edge_ms": 0}}
+2026-08-30 17:11:18,919 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 894 got 908
+2026-08-30 17:11:35,305 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 908 got 912
+2026-08-30 17:12:09,918 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 912 got 919
+2026-08-30 17:12:35,179 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 919 got 927
+2026-08-30 17:12:40,878 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 927 got 930
+2026-08-30 17:12:48,034 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 930 got 931
+2026-08-30 17:13:37,262 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 935 got 937
+2026-08-30 17:14:40,691 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 937 got 943
+2026-08-30 17:15:02,045 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 943 got 944
+2026-08-30 17:15:17,026 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 10112830.398254097, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 10307885.878905654, "qualifying_edge_ms": 0}}
+2026-08-30 17:16:17,298 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 946 got 948
+2026-08-30 17:18:48,523 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 948 got 959
+2026-08-30 17:19:11,907 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 959 got 970
+2026-08-30 17:20:03,563 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 970 got 976
+2026-08-30 17:20:17,032 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 10712497.557774186, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 10776338.52769062, "qualifying_edge_ms": 0}}
+2026-08-30 17:21:00,675 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 976 got 980
+2026-08-30 17:25:17,037 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 11308139.154724777, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 11351865.430042148, "qualifying_edge_ms": 0}}
+2026-08-30 17:28:21,044 WARNING arb-obs: kalshi seq gap on KXGOVTSHUTDOWN-26OCT01: expected 980 got 1004
+2026-08-30 17:28:21,386 WARNING arb-obs: kalshi seq gap on KXFEDDECISION-26SEP-H0: expected 1004 got 1006
+2026-08-30 17:30:17,040 INFO arb-obs: checkpoint: {"fed-sep2026-no-change": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 11887598.88323769, "qualifying_edge_ms": 0}, "govt-shutdown-oct1-2026": {"events_per_pair_hour": 0.0, "edge_occupancy": 0.0, "observed_pair_ms": 11942746.198900044, "qualifying_edge_ms": 0}}

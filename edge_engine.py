@@ -102,7 +102,14 @@ class EdgeEngine:
         self.restart_count = restart_count
         self.open_events: Dict[Key, OpenEvent] = {}
         self.exposure: Dict[str, PairExposure] = {}
-        self._last_tick_monotonic: Dict[Key, float] = {}
+        # Keyed by market_pair_id ONLY (not (pair_id, direction)) — see
+        # accrue_pair_exposure(). A prior version tracked this per-direction
+        # inside on_tick() and both directions independently added elapsed
+        # wall-clock time to the SAME PairExposure object, inflating
+        # observed_pair_ms/qualifying_edge_ms by ~2x. Caught live 2026-08-30
+        # (Bug 1 of the post-launch fix) by checking observed_pair_ms deltas
+        # between checkpoint log lines against real elapsed wall-clock time.
+        self._last_exposure_tick_monotonic: Dict[str, float] = {}
 
     # ---- startup reconciliation ----
 
@@ -146,8 +153,10 @@ class EdgeEngine:
     def on_tick(self, market_pair_id, direction, no_proxy, use_yes_price, quote,
                 net_edge_value, both_books_valid, k_book_age_ms, pm_book_age_ms,
                 book_fresh_flags, monotonic_now):
+        """Exposure accrual is NOT done here — call accrue_pair_exposure()
+        exactly once per pair per recompute cycle instead (this method is
+        called once per DIRECTION, and accruing here double-counted)."""
         key = (market_pair_id, direction)
-        self._accrue_exposure(key, monotonic_now, both_books_valid, net_edge_value)
 
         existing = self.open_events.get(key)
 
@@ -243,20 +252,23 @@ class EdgeEngine:
 
     # ---- exposure accrual ----
 
-    def _accrue_exposure(self, key, monotonic_now, both_books_valid, net_edge_value):
-        last = self._last_tick_monotonic.get(key)
-        self._last_tick_monotonic[key] = monotonic_now
+    def accrue_pair_exposure(self, market_pair_id, monotonic_now, both_books_valid, any_direction_qualifies):
+        """Call exactly ONCE per pair per recompute cycle — never per
+        direction. `any_direction_qualifies` should be True if EITHER
+        direction's net_edge crossed the open threshold on this tick."""
+        last = self._last_exposure_tick_monotonic.get(market_pair_id)
+        self._last_exposure_tick_monotonic[market_pair_id] = monotonic_now
         if last is None:
             return
         elapsed_ms = (monotonic_now - last) * 1000
         if elapsed_ms <= 0:
             return
-        pe = self.exposure.setdefault(key[0], PairExposure())
-        # accrue based on state BEFORE this tick (both_books_valid/net_edge_value
+        pe = self.exposure.setdefault(market_pair_id, PairExposure())
+        # accrue based on state BEFORE this tick (both_books_valid/any_direction_qualifies
         # passed in reflect the state that was current for the just-elapsed interval)
         if both_books_valid:
             pe.observed_pair_ms += elapsed_ms
-            if net_edge_value is not None and net_edge_value >= EDGE_OPEN_THRESHOLD:
+            if any_direction_qualifies:
                 pe.qualifying_edge_ms += elapsed_ms
 
     def checkpoint(self, wall_hours_elapsed: float):

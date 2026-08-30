@@ -38,7 +38,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 from arb_common import FEE_MODEL_VERSION, kalshi_fee_per_contract_c1, loads_decimal, net_edge, polymarket_fee
-from edge_engine import EdgeEngine
+from edge_engine import EDGE_OPEN_THRESHOLD, EdgeEngine
 from startup_checks import (
     StartupAbort,
     assert_kalshi_key_read_only,
@@ -150,6 +150,40 @@ class Backoff:
 # orderbook_delta/orderbook_snapshot channel carries the sequence numbers
 # needed for book_invalidated detection; top-of-book size is derived from
 # the best array entry rather than also subscribing to `ticker`)
+#
+# SEQ SCOPE, corrected 2026-08-30 (post-launch Bug 2/3 fix): `seq` is
+# scoped per SUBSCRIPTION ID (sid), not per market ticker, and not a
+# per-connection-wide counter either — confirmed against
+# docs.kalshi.com/asyncapi.yaml ("Sequential number... used for
+# snapshot/delta consistency", appearing alongside `sid`) AND live capture
+# (tests/fixtures/kalshi_multi_sid_seq_evidence.json): subscribing two
+# tickers produced sid=1 for both, with seq incrementing 1,2,3,4 across
+# EVERY message under that sid regardless of type or which ticker it's
+# about (snapshot, an "ok" ack from a second subscribe merging into the
+# same sid, another snapshot, a get_snapshot response — all consumed a
+# seq number). A second `subscribe` call on an already-subscribed
+# connection does NOT create an independent sid; Kalshi merges the new
+# tickers into the existing one. So this client tracks ONE expected_seq
+# for the whole connection, checked against every message that carries a
+# seq field, not per-ticker.
+#
+# An earlier implementation tracked seq per ticker, which produced a false
+# "gap" every time a DIFFERENT ticker's message consumed an intervening
+# seq number — with 2 tickers subscribed this fired every 30-90 seconds
+# continuously (verified against ~90 minutes of live production logs),
+# each time wiping that ticker's book to empty and (see next paragraph)
+# incorrectly marking it valid again on the very next delta.
+#
+# BOOK VALIDITY, corrected: a book must stay invalid until a REAL
+# orderbook_snapshot is received — not until the next delta, which was
+# the actual bug that let a wiped, empty-then-sparse-rebuilt-from-deltas
+# book get silently trusted again within seconds. On any seq gap (or
+# malformed message, or reconnect), this client marks every currently
+# tracked ticker as awaiting a fresh snapshot, drops any delta for a
+# ticker still awaiting one, and ACTIVELY requests a fresh snapshot via
+# Kalshi's update_subscription/get_snapshot command (wire-verified live,
+# same fixture file) rather than passively waiting for one that might
+# never arrive spontaneously mid-connection.
 # --------------------------------------------------------------------------
 
 class KalshiClient:
@@ -159,7 +193,11 @@ class KalshiClient:
         self.tickers = tickers
         self.on_book_update = on_book_update
         self.on_invalidated = on_invalidated
-        self.seq_by_ticker = {}
+        self.expected_seq = None
+        self.awaiting_snapshot = set()
+        self.sid = None
+        self._ws = None
+        self._next_cmd_id = 100
 
     async def run(self, stop_event):
         backoff = Backoff("kalshi")
@@ -169,15 +207,17 @@ class KalshiClient:
                 backoff.reset()
             except Exception:
                 log.exception("kalshi ws error")
-                for ticker in self.tickers:
-                    self.on_invalidated(ticker)
-                    self.seq_by_ticker.pop(ticker, None)
+                self._invalidate_all()
                 if not stop_event.is_set():
                     await backoff.wait()
 
     async def _connect_once(self, stop_event):
+        self.expected_seq = None
+        self.awaiting_snapshot = set(self.tickers)
+        self.sid = None
         headers = kalshi_auth_headers(self.private_key, self.api_key_id, "GET", KALSHI_WS_PATH)
         async with websockets.connect(KALSHI_WS_HOST, additional_headers=headers) as ws:
+            self._ws = ws
             sub = {
                 "id": 1,
                 "cmd": "subscribe",
@@ -191,38 +231,67 @@ class KalshiClient:
             async for raw in ws:
                 if stop_event.is_set():
                     return
-                self._handle_message(raw)
+                await self._handle_message(raw)
 
-    def _handle_message(self, raw):
+    def _invalidate_all(self):
+        for ticker in self.tickers:
+            self.on_invalidated(ticker)
+        self.awaiting_snapshot = set(self.tickers)
+        self.expected_seq = None
+
+    async def _request_fresh_snapshots(self):
+        if self._ws is None:
+            return
+        self._next_cmd_id += 1
+        cmd = {
+            "id": self._next_cmd_id,
+            "cmd": "update_subscription",
+            "params": {"market_tickers": self.tickers, "action": "get_snapshot"},
+        }
+        if self.sid is not None:
+            cmd["params"]["sid"] = self.sid
+        try:
+            await self._ws.send(json.dumps(cmd))
+        except Exception:
+            log.exception("kalshi get_snapshot resync request failed")
+
+    async def _handle_message(self, raw):
         try:
             msg = loads_decimal(raw)
         except (ValueError, json.JSONDecodeError):
             log.warning("kalshi malformed message, invalidating all tracked books")
-            for ticker in self.tickers:
-                self.on_invalidated(ticker)
-                self.seq_by_ticker.pop(ticker, None)
+            self._invalidate_all()
+            await self._request_fresh_snapshots()
             return
+
+        if msg.get("type") == "subscribed":
+            self.sid = msg.get("msg", {}).get("sid")
+            return
+
+        seq = msg.get("seq")
+        if seq is not None:
+            if self.expected_seq is not None and seq != self.expected_seq + 1:
+                log.warning("kalshi seq gap (sid=%s): expected %s got %s", self.sid, self.expected_seq + 1, seq)
+                self._invalidate_all()
+                await self._request_fresh_snapshots()
+            self.expected_seq = seq
+            if msg.get("sid") is not None:
+                self.sid = msg["sid"]
 
         msg_type = msg.get("type")
         body = msg.get("msg", msg)
         ticker = body.get("market_ticker")
         if ticker is None:
-            return
+            return  # "ok" acks etc. carry no per-ticker body
 
         if msg_type == "orderbook_snapshot":
-            self.seq_by_ticker[ticker] = msg.get("seq")
+            self.awaiting_snapshot.discard(ticker)
             self.on_book_update(ticker, body, is_snapshot=True)
         elif msg_type == "orderbook_delta":
-            expected = self.seq_by_ticker.get(ticker)
-            seq = msg.get("seq")
-            if expected is not None and seq is not None and seq != expected + 1:
-                log.warning("kalshi seq gap on %s: expected %s got %s", ticker, expected + 1, seq)
-                self.on_invalidated(ticker)
-                self.seq_by_ticker.pop(ticker, None)
-                return
-            self.seq_by_ticker[ticker] = seq
+            if ticker in self.awaiting_snapshot:
+                return  # book not trustworthy yet; seq already tracked above
             self.on_book_update(ticker, body, is_snapshot=False)
-        # subscribed-ack / error message types intentionally ignored
+        # other message types (error, etc.) intentionally ignored
 
 
 # --------------------------------------------------------------------------
@@ -556,19 +625,24 @@ class Orchestrator:
         self.edge_engine.handle_book_invalidated(pair_id, "kalshi_no_proxy_pm_yes", monotonic_now)
 
     def _recompute(self, pair_id, monotonic_now):
+        """Two passes, deliberately: (1) compute both directions' edges
+        without touching the EdgeEngine, so exposure can be accrued exactly
+        ONCE per pair; (2) dispatch each direction to on_tick() for episode
+        open/close tracking. A prior version accrued exposure inside the
+        per-direction loop, which called it twice per tick and inflated
+        observed_pair_ms/qualifying_edge_ms ~2x (Bug 1, 2026-08-30 fix)."""
         state = self.pair_states[pair_id]
         both_valid = state.k_valid and state.pm_valid
         k_age_ms = int((monotonic_now - state.k_last_update) * 1000) if state.k_last_update else None
         pm_age_ms = int((monotonic_now - state.pm_last_update) * 1000) if state.pm_last_update else None
         book_fresh_flags = {"kalshi": state.k_valid, "polymarket": state.pm_valid}
         have_quotes = None not in (state.k_yes_bid, state.k_yes_ask, state.pm_yes_ask, state.pm_no_ask)
+        tickable = both_valid and have_quotes
 
+        direction_results = []  # (direction, no_proxy, edge_or_None, quote)
         for direction, no_proxy in (("kalshi_yes_pm_no", False), ("kalshi_no_proxy_pm_yes", True)):
-            if not (both_valid and have_quotes):
-                self.edge_engine.on_tick(
-                    pair_id, direction, no_proxy, True, {}, None, False,
-                    k_age_ms, pm_age_ms, book_fresh_flags, monotonic_now,
-                )
+            if not tickable:
+                direction_results.append((direction, no_proxy, None, {}))
                 continue
 
             if direction == "kalshi_yes_pm_no":
@@ -600,10 +674,24 @@ class Orchestrator:
                 "k_book_age_ms": k_age_ms, "pm_book_age_ms": pm_age_ms,
                 "book_fresh_flags": book_fresh_flags,
             }
-            self.edge_engine.on_tick(
-                pair_id, direction, no_proxy, True, quote, edge, True,
-                k_age_ms, pm_age_ms, book_fresh_flags, monotonic_now,
-            )
+            direction_results.append((direction, no_proxy, edge, quote))
+
+        any_qualifies = any(
+            edge is not None and edge >= EDGE_OPEN_THRESHOLD for _, _, edge, _ in direction_results
+        )
+        self.edge_engine.accrue_pair_exposure(pair_id, monotonic_now, tickable, any_qualifies)
+
+        for direction, no_proxy, edge, quote in direction_results:
+            if edge is None:
+                self.edge_engine.on_tick(
+                    pair_id, direction, no_proxy, True, {}, None, False,
+                    k_age_ms, pm_age_ms, book_fresh_flags, monotonic_now,
+                )
+            else:
+                self.edge_engine.on_tick(
+                    pair_id, direction, no_proxy, True, quote, edge, True,
+                    k_age_ms, pm_age_ms, book_fresh_flags, monotonic_now,
+                )
 
 
 # --------------------------------------------------------------------------

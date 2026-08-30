@@ -166,3 +166,60 @@ def test_restart_count_defaults_to_zero(engine):
     engine.on_tick("p1", "dir_a", False, True, {}, Decimal("-0.02"), True, 0, 0, {}, monotonic_now=100.5)
     rows = read_ledger(engine)
     assert rows[0]["restart_count"] == 0
+
+
+# --------------------------------------------------------------------------
+# Exposure accrual (Bug 1 fix, 2026-08-30): must be called once per PAIR per
+# tick, never once per direction — the live instrument's checkpoint log
+# showed observed_pair_ms accruing at ~2x real wall-clock time because the
+# old implementation accrued inside on_tick(), which is called once per
+# direction (two directions per pair).
+# --------------------------------------------------------------------------
+
+def test_accrue_pair_exposure_matches_real_elapsed_time_not_doubled(engine):
+    """The regression this bug produced: calling the per-direction on_tick
+    twice for the same wall-clock interval must NOT double the exposure.
+    Simulates exactly that call pattern (two directions, same pair, same
+    monotonic timestamps) and asserts observed_pair_ms equals the real
+    elapsed time, not 2x it."""
+    pair_id = "p1"
+    # tick 1 at t=100.0 (first call establishes baseline, accrues nothing)
+    engine.accrue_pair_exposure(pair_id, monotonic_now=100.0, both_books_valid=True, any_direction_qualifies=False)
+    # tick 2 at t=101.0 — exactly 1000ms of real elapsed time
+    engine.accrue_pair_exposure(pair_id, monotonic_now=101.0, both_books_valid=True, any_direction_qualifies=False)
+    pe = engine.exposure[pair_id]
+    assert pe.observed_pair_ms == 1000.0
+
+
+def test_accrue_pair_exposure_only_while_both_books_valid(engine):
+    pair_id = "p1"
+    engine.accrue_pair_exposure(pair_id, monotonic_now=100.0, both_books_valid=True, any_direction_qualifies=False)
+    engine.accrue_pair_exposure(pair_id, monotonic_now=101.0, both_books_valid=False, any_direction_qualifies=False)
+    engine.accrue_pair_exposure(pair_id, monotonic_now=102.0, both_books_valid=True, any_direction_qualifies=False)
+    pe = engine.exposure[pair_id]
+    # the 100->101 interval counts (both valid at start of interval); the
+    # 101->102 interval does not (invalid at start of interval)
+    assert pe.observed_pair_ms == 1000.0
+
+
+def test_accrue_pair_exposure_qualifying_edge_ms_tracks_either_direction():
+    """any_direction_qualifies is computed by the caller (Orchestrator) as
+    qualifies_a OR qualifies_b — accrue_pair_exposure itself just trusts
+    the flag it's given."""
+    from edge_engine import EdgeEngine as EE
+    eng = EE.__new__(EE)
+    eng.exposure = {}
+    eng._last_exposure_tick_monotonic = {}
+    eng.accrue_pair_exposure("p1", monotonic_now=0.0, both_books_valid=True, any_direction_qualifies=True)
+    eng.accrue_pair_exposure("p1", monotonic_now=1.0, both_books_valid=True, any_direction_qualifies=True)
+    pe = eng.exposure["p1"]
+    assert pe.observed_pair_ms == 1000.0
+    assert pe.qualifying_edge_ms == 1000.0
+
+
+def test_on_tick_no_longer_accrues_exposure_itself(engine):
+    """Regression guard: on_tick() must NOT touch self.exposure at all —
+    that responsibility moved entirely to accrue_pair_exposure()."""
+    engine.on_tick("p1", "dir_a", False, True, {}, Decimal("0.01"), True, 0, 0, {}, monotonic_now=100.0)
+    engine.on_tick("p1", "dir_a", False, True, {}, Decimal("0.01"), True, 0, 0, {}, monotonic_now=101.0)
+    assert engine.exposure == {}
