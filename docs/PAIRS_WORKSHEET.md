@@ -100,3 +100,77 @@ differences worth your attention, not just the usual boilerplate caution.
   mismatches are exactly the kind of thing this manual review step exists
   to catch before they'd otherwise surface as a confusing empirical
   anomaly on day 14.
+
+## Backlog — candidates for the Day-14 review only, NOT enabled in pairs.yaml
+
+Operator instruction 2026-09-01: keep researching/cataloging in the
+background, hold actually adding or enabling any new pair until Day-14 —
+adding pairs mid-window creates an uneven observation baseline (14 days
+of data on the original pairs vs. partial days on anything added later)
+and complicates the post-hoc analysis. Everything below is prep only.
+
+### Candidate: ECB rate decision — Pair 4 (Sept meeting expires before Day-14; Oct meeting is the real candidate)
+
+Same bracket structure as the Fed pair (5-way: 50+bp cut / 25bp cut / no
+change / 25bp hike / 50+bp hike on both venues) — structurally clean,
+not a CPI-style trap. **Timing note: the September 2026 ECB meeting
+(Sept 9-10) resolves BEFORE the ~Sept 14 Day-14 verdict**, so it's not a
+usable candidate by the time this backlog would be acted on. The **October
+29, 2026 meeting is the real candidate** — still has runway post-Day-14.
+
+| Field | Kalshi | Polymarket |
+|---|---|---|
+| Ticker / condition ID (Oct 29 "no change" leg) | `KXCBDECISIONEU-26OCT29-HOLD` (vol ~$1,707) | conditionId `0xf97e2e2b845a3e5ce0646ce7563cca294f58b1c23affc38010386c08627075ac` (vol ~$20,676), event `ecb-interest-rates-october-2026-20260723225848778` |
+| Resolution basis | ECB deposit facility rate change vs. pre-meeting level | Same — verbatim: "resolve according to the change in basis points in the deposit facility rate...relative to the level it was prior to this meeting" |
+| Close | 2026-10-29T13:14:00Z | not yet pulled — pull live at Day-14, don't trust this note by then |
+| Fee tier | via `kalshi_fee()` | needs UI confirmation at Day-14 (Economics tier expected, 0.05 per the confirmed category table — do NOT assume, re-check) |
+| **Definitional diff notes / Recommended?** | *(Day-14 operator judgment — not pre-filled)* | |
+
+### Candidate: BoE rate decision — Pair 5 (same timing note: Sept meeting too close to Day-14, Nov 5 is the real candidate)
+
+Same 5-way bracket structure, both venues. September 2026 BoE meeting
+(Sept 17) resolves only 3 days after the ~Sept 14 Day-14 verdict — too
+tight to be useful as a fresh addition. **November 5, 2026 is the real
+candidate.**
+
+| Field | Kalshi | Polymarket |
+|---|---|---|
+| Ticker / condition ID (Nov 5 "hold" leg) | `KXCBDECISIONENGLAND-26NOV05-HOLD` (vol ~$1,179) | need to re-pull the Nov event at Day-14 — only the Sept event (`bank-of-england-decision-in-september-...`) was checked this pass |
+| Resolution basis | BoE Bank Rate change vs. pre-meeting level | Same basis confirmed on the Sept event; Nov event assumed identical structure, NOT independently re-verified |
+| Fee tier | via `kalshi_fee()` | needs UI confirmation at Day-14 |
+| **Definitional diff notes / Recommended?** | *(Day-14 operator judgment — not pre-filled)* | |
+
+### Candidate: US unemployment rate — flagged as LIKELY the same trap as CPI, not pre-verified clean
+
+Polymarket has an open "August Unemployment Rate" market (~$26k volume).
+Given Polymarket structured CPI as discrete point-bins ("exactly X%")
+while Kalshi structures inflation/rate prints as cumulative thresholds
+("above X%"), unemployment is very likely the same shape on both sides —
+**this needs the identical threshold-vs-bin check that killed the CPI
+pair before it's treated as a real candidate**, not assumed clean because
+the topic exists on both venues. Do not add without that check.
+
+### Checked and rejected as candidates (topic overlap exists, no clean match found)
+
+- **2028 US Presidential Election** — Polymarket has one national winner
+  market; Kalshi (checked 2026-09-01) only has ~60 state-by-state
+  party-winner markets, no single national-winner market found. Would
+  require reconstructing a national view from many state markets — not a
+  1:1 pair, not pursued further.
+- **Israel-Iran ceasefire / US-Iran relations** — real volume on both
+  venues, but Kalshi's markets are narrower/differently-framed (specific
+  officials, specific narrow actions) rather than the same broad
+  "does the ceasefire hold" question Polymarket asks. Same class of trap
+  as CPI; no clean match found on a first pass.
+
+### Categories not yet checked (operator-suggested, still open)
+
+- Single-game sports (high liquidity confirmed to exist on both venues
+  from earlier live testing — the Man U vs Ipswich capture — but fee
+  tier is confirmed 0.05/Sports per docs.polymarket.com/trading/fees,
+  NOT 0.75% as floated in one conversation; re-verify on whatever
+  specific match gets picked, categories can vary)
+- Broader geopolitics/world-events beyond what's been checked so far —
+  the original Task-1.5-era finding (thin liquidity under Polymarket's
+  adjacent tags) still stands as the baseline expectation; worth another
+  pass but temper expectations accordingly.
