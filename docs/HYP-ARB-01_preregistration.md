@@ -1,8 +1,14 @@
 # HYP-ARB-01 — Pre-registered verdict criteria for the cross-venue edge window (DRAFT)
 
-**Status:** DRAFT — becomes binding on operator review + word. Lock deadline
-**2026-09-05** (chosen so the bar is fixed while the sample is still nearly
-empty; see §2).
+**Status:** DRAFT — becomes binding on operator review + word. The original
+lock deadline, **2026-09-05**, passed with no operator word and is
+superseded. **Revised deadline: 2026-09-12T23:59 UTC** — see the lapse
+clause at the end of §3. This revision (adjudicated 2026-09-09) re-sources
+`r_f`, rewrites `rho` from named first-principles components, and adds a
+peek acknowledgment because interim data (the 09-04 3% peak, informal
+"trending toward KILL" reads) was seen before this version was written —
+see §3.0. **The lock utterance should name this file's commit hash**, so
+what was locked is unambiguous.
 **Filed:** 2026-09-03 03:10Z, Day 3 of the 14-day window, by CC on operator
 instruction ("draft the prereg").
 **Every threshold below is a CC recommendation, not an operator decision.**
@@ -49,7 +55,26 @@ used only to check that the criteria are *computable* from a real ledger row
 
 ## 3. The bar is a return on locked capital, not a raw edge
 
-The instrument records `net_edge` in probability units per matched pair.
+### 3.0 Peek acknowledgment
+
+This is not a true pre-registration. The original 2026-09-05 lock deadline
+passed unmet; this version is written 2026-09-09, after the day-3
+trajectory, the 09-04 3.0% peak, and informal "trending toward KILL" reads
+were already stated in conversation. `r_f` is an external lookup and `rho`
+is derived from named risk components fixed *before* any verdict arithmetic
+was run against current data (§3.2), specifically to limit — not
+eliminate — the risk that the bar was shaped by the outcome it judges.
+Weight this verdict accordingly against a genuine ex-ante prereg.
+
+### 3.1 Definition and units
+
+The instrument records `net_edge` in dollars per $1 notional contract.
+**Units, stated once to remove ambiguity: `net_edge = 0.0100` means 1%
+(1¢ per $1 of notional), not 1 basis point.** This note exists because this
+window's own reporting has oscillated between "2bp" and "3.0%" for values
+that were dollars-per-contract throughout — a 100x unit ambiguity inside
+the document that defines the verdict is not acceptable at lock.
+
 That number is **not** the thing to threshold, because this is not a
 fast arbitrage. Capturing the edge means buying both legs and **holding
 them to resolution** — weeks, not seconds. Capital is locked the whole
@@ -72,40 +97,95 @@ A **qualifying episode** is one where:
 2. `executable_top_size ≥ S_min`, and
 3. `censored == false` and both `book_fresh_flags` are true at open.
 
+### 3.2 Inputs
+
 `[OPERATOR]` **Inputs to fix at lock:**
 
 | input | meaning | CC recommendation |
 |---|---|---|
-| `r_f` | risk-free annual rate, the cash alternative | **4.3%** — must be set from a real source at lock, not from this file |
-| `rho` | risk premium for cross-venue, settlement-timing, definitional-divergence and execution risk on an unsecured two-venue position | **1.00% (100 bp)** |
+| `r_f` | risk-free annual rate, the cash alternative | **3.72%** |
+| `rho` | risk premium for cross-venue, settlement-timing, definitional-divergence and execution risk on an unsecured two-venue position | **1.50% (150 bp)** |
 | `S_min` | minimum executable top-of-book size for an episode to count | **$1,000** |
+| `N_min` | minimum qualifying-episode count for the verdict to bind (see §5.2) | **5** |
 
-`rho` is doing real work and should not be set to zero: the two legs settle
-on different venues, at different instants, against different resolution
-texts, with counterparty and USDC exposure on one side. The worksheet
-already flags this concretely for the shutdown pair (~14-hour settlement
-divergence).
+**`r_f` sourcing.** U.S. Treasury daily 4-week bill rate, coupon-equivalent
+basis (comparable to `return_hold`, which is already annualized via `T`):
+most recent published row at time of writing is **08/27/2026: 3.72%**
+(`home.treasury.gov` daily bill-rate table; the rate held a flat 3.62–3.66%
+discount-basis band through all of August). **This is a ~2-week-stale
+publication lag — the lock utterance should re-pull the current rate and
+use that value, not copy this number verbatim.**
 
-## 4. Worked example — the one episode on record
+**`rho` derivation — fixed from named components before checking where it
+lands, not fit to the data:**
 
-Not calibration; a demonstration that §3 is computable from a real row.
+| component | rationale | est. |
+|---|---|---|
+| Counterparty/custody | Polymarket is a smart-contract/USDC venue, no segregated-funds protection comparable to a regulated exchange; USDC depeg is a small but real tail | 50 bp |
+| Settlement/definitional divergence | different resolution texts, different settlement instants — the shutdown pair's ~14hr window mismatch is the concrete case already on file | 40 bp |
+| Oracle/dispute risk | Polymarket resolves via an optimistic oracle, disputable and delayable past the clean settlement time `T` assumes | 30 bp |
+| Locked-capital illiquidity | a T-bill is liquid; this position cannot be exited early if the thesis breaks mid-hold | 30 bp |
+| **Total** | | **150 bp** |
+
+This is above the original 100bp placeholder, deliberately: raising `rho`
+raises the hurdle, which is the *conservative* direction (harder to pass).
+A `rho` chosen generously toward a lower hurdle after already having seen
+weak data would be the goalpost-move this file exists to prevent.
+
+**`S_min` consequence — a finding, not a tuning knob.** The single recorded
+`govt-shutdown-oct1-2026` episode had `executable_top_size = 5.00`, and the
+pair's Polymarket side is structurally thin (worksheet dry-run measured
+~5.9 contracts top-of-book). **At `S_min = $1,000`, this pair will almost
+certainly never produce a qualifying episode.** Since §5.3 requires
+qualifying episodes on **≥ 2 distinct pairs** for a PASS, this means PASS
+is not reachable this window through any realistic combination of edges —
+only KILL (§5.1) or KILL-underpowered (§5.2) can fire, regardless of edge
+quality on the Fed pair alone. **Ruling: `S_min` stays at $1,000 and §5.3's
+two-pair requirement stays as written.** Lowering `S_min` post-peek to let
+the shutdown pair contribute (at $500 the 09-04 episode below would
+qualify on size) is the same sin as a generous `rho` — relaxing a bar
+toward PASS after seeing the data. **The operator signs §5.3 aware of this
+asymmetry: this window can only conclude KILL or underpowered by
+construction, independent of what the data does between now and 09-14.**
+If the data had instead looked PASS-worthy, the correct response would be
+a new, properly designed study with liquidity-screened pairs — not
+loosening this one after the fact. Lesson for next time, not actioned
+here: pair selection needs an `S_min`-compatibility check at *worksheet*
+stage, before launch — the shutdown pair was foreclosed as a PASS
+contributor from day one and nobody ran that arithmetic then.
+
+## 4. Worked example — best episode on record as of this revision (2026-09-08)
+
+Demonstrates §3 is computable from real rows, and shows what the §3.2
+inputs actually do at signing — not calibration; this episode was found by
+sorting all 53 recorded episodes by `net_edge_at_open`, after the inputs
+above were already fixed.
+
+Best candidate: 2026-09-04T12:30:29Z, `fed-sep2026-no-change`,
+`net_edge_at_open = 0.03000`, `executable_top_size = 722.2`, both
+`book_fresh_flags` true, `persisted_250ms: true`, `close_reason:
+edge_closed`.
 
 ```
-net_edge_at_open = 0.00020    C = 0.99980
-return_hold      = 0.00020 / 0.99980         = 0.0200%
-T (2026-09-02 14:11Z → 2026-09-16 18:05Z)    = 14.16 days
-carry  = 4.3% × 14.16/365                    = 0.1668%   (16.7 bp)
-hurdle = 0.1668% + 1.00%                     = 1.1668%
+net_edge_at_open = 0.03000    C = 0.97000
+return_hold      = 0.03000 / 0.97000          = 3.093%
+T (2026-09-04 12:30:29Z → 2026-09-16 18:05Z)  = 12.232 days
+carry  = 3.72% × 12.232/365                   = 0.125%
+hurdle = 0.125% + 1.50%                       = 1.625%
 ```
 
-`0.0200% / 1.1668% = 1.7%` — the episode clears **1.7% of the hurdle**, and
-**12% of the bare carry cost alone, before any risk premium**. It fails
-criterion 1 by roughly 58x. It passes criterion 2 ($7,266 ≥ $1,000) and
-criterion 3.
+`3.093% ≥ 1.625%` — **this episode clears criterion 1**, by ~1.9x, the
+first time any recorded episode has cleared the return hurdle. But
+`executable_top_size = 722.2 < S_min = 1,000` — **it fails criterion 2 on
+size.** The next five largest episodes by `net_edge_at_open` were checked
+the same way; none approach the hurdle (best of the rest: ~1.04%
+return_hold against a ~1.63% hurdle).
 
-Stated plainly: the only edge this instrument has found so far would earn
-about **$1.45** on ~$7,266 of capital locked for two weeks — roughly 0.5%
-annualised, against a cash alternative of ~4.3%.
+**Net result at time of writing: zero of 53 recorded episodes qualify
+under §3.** If the window closed today, §5.1 (zero qualifying → KILL) is
+what fires — not the underpowered case. This is what locking these four
+inputs actually produces; it is shown here so the operator signs having
+seen it, not as a prediction of the 09-14 outcome.
 
 ## 5. Pre-committed verdict — no discretion on 2026-09-14
 
@@ -127,7 +207,7 @@ annualised, against a cash alternative of ~4.3%.
    latency, venue reconnects, and the daily `apt-daily-upgrade` pm2 bounce
    are **not** faults and do not trigger this.
 
-`[OPERATOR]` **`N_min` to fix at lock. CC recommendation: 5.**
+`N_min` is fixed in §3.2 (**5**), alongside the other three inputs.
 
 **No outcome of this verdict authorises capital.** A PASS authorises
 drafting an *execution-feasibility* pre-registration — with the naked-leg
@@ -187,10 +267,17 @@ cannot quietly skip one and so none is rediscovered as a surprise.
 - **The window does not extend.** 2026-09-14T22:04Z is the end. A
   disappointing n is a result under §5.2, not grounds for more time.
 - **No threshold in §3 or §5 moves after lock.** A change to `r_f`, `rho`,
-  `S_min` or `N_min` after 2026-09-05 voids the pre-registration and the
-  window reports as exploratory only.
+  `S_min` or `N_min` after the lock word is given voids the pre-registration
+  and the window reports as exploratory only.
 - Any parameter change to `edge_engine.py`'s qualification logic during the
   window voids the window, same rule.
+- **Lapse clause (added 2026-09-09, supersedes the original 09-05
+  deadline):** if no operator lock word is given by **2026-09-12T23:59
+  UTC**, this pre-registration lapses and the 2026-09-14 verdict reports as
+  exploratory only — recorded as a **lapsed lock**, a specific documented
+  state, not a silent default. To make this a *chosen* exploratory outcome
+  instead of a lapsed one, the operator states that explicitly before the
+  deadline; either statement is a valid governance action, silence is not.
 
 ## 8. What a KILL means operationally
 
