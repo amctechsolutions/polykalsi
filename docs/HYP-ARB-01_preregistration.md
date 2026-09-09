@@ -214,6 +214,11 @@ drafting an *execution-feasibility* pre-registration — with the naked-leg
 safeguards from the original design rounds — and nothing else. The
 instrument is observation-only by construction and stays that way.
 
+**A PASS verdict's pair-extension successor is pre-drafted, conditional,
+and not activated:** see `docs/HYP-ARB-02_successor_preregistration.md`
+(ECB Oct 29 / BoE Nov 5 candidates, fires only on PASS, requires its own
+`S_min`-compatibility check before launch).
+
 ## 6. Analysis steps pre-committed before the verdict is read
 
 These are known measurement traps, recorded now so the day-14 analysis
