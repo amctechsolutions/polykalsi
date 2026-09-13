@@ -24,7 +24,10 @@ ARB_ROOT = Path("/root/arb")
 LEDGER_PATH = ARB_ROOT / "edge_ledger.jsonl"
 RESTART_COUNT_PATH = ARB_ROOT / "restart_count.json"
 RSIBOT_ENV_PATH = Path("/root/rsibot/.env")
-PM2_OUT_LOG = Path("/root/.pm2/logs/arb-obs-out.log")
+# Checkpoint lines are log.info() calls, which pm2 captures on stderr regardless of
+# level -- "error log" is a pm2 naming artifact, not a signal these lines are errors.
+# Confirmed via `pm2 describe arb-obs`: out.log stays 0 bytes for this process.
+PM2_LOG_PATH = Path("/root/.pm2/logs/arb-obs-error.log")
 
 
 def read_rsibot_telegram_creds():
@@ -59,10 +62,10 @@ def ledger_summary():
 
 def latest_checkpoint():
     """Last 'checkpoint: {...}' line from pm2's own log, read-only."""
-    if not PM2_OUT_LOG.exists():
+    if not PM2_LOG_PATH.exists():
         return None
     match = None
-    for line in PM2_OUT_LOG.read_text(errors="replace").splitlines():
+    for line in PM2_LOG_PATH.read_text(errors="replace").splitlines():
         m = re.search(r"checkpoint: (\{.*\})", line)
         if m:
             match = m.group(1)
